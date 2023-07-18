@@ -11,64 +11,124 @@ import util
 # run with `gunicorn -c hooks.py -b 0.0.0.0 "vrc:create_app()"`
 
 default_library = None
+status_list = []
+current_queue = []
+song_history = []
+
+
+def get_song_with_index(uri, song_list):
+    for i, song in enumerate(song_list):
+        if song['uri'] == uri:
+            return song, i
+    return None, None
+
 
 # https://falcon.readthedocs.io/en/stable/api/hooks.html#after-hooks
-def update_queue(req, resp, resource):
-    # deactivate the volumio notifications to prevent recursion
-    hooks.register_with_volumio(unregister=True)
-
-    # check if we should run
-    media = req.get_media()
-    if media['item'] != 'state' and media['data']['status'] != 'play':
+def evaluate_status(req, resp, resource):
+    logger = logging.getLogger('vrc')
+    global status_list, current_queue, song_history
+    if len(status_list) == 0:
         return
+    media = status_list.pop()
+    logger.debug(f'evaluate_status: {media}')
+    if len(status_list) > 0:
+        logger.debug(f'status_list not empty ({len(status_list)} items remaining)! {status_list}')
+    event = media['item']
+    data = media['data']
+    if event == 'state':
+        logger.info(f'{data["status"]}: {data["artist"]} - {data["title"]} ({data["uri"]})')
+        #status_list.append({'item': event, 'data': {k: data[k] for k in ['status', 'artist', 'title', 'uri']}})
+        if len(song_history) == 0 or song_history[-1]['uri'] != data['uri']:
+            song_history.append({k: data[k] for k in ['artist', 'title', 'uri']})
+            remove_uri_from_queue(data['uri'])
+    elif event == 'queue':
+        queue = []
+        for song in data:
+            title = song['title'] if 'title' in song else song['name']
+            s = {'title': title}
+            s['artist'] = song['artist']
+            s['uri'] = song['uri']
+            queue.append(s)
+        #status_list.append({'item': event, 'data': queue})
+        uris_old = {s['uri'] for s in current_queue}
+        uris_new = {s['uri'] for s in queue}
+        for uri in (uris_new - uris_old):
+            song, i = get_song_with_index(uri, queue)
+            if song is None:
+                logger.error(f'uri not found in queue: {uri}')
+            else:
+                logger.info(f'song added to queue position {i}: {song["artist"]} - {song["title"]} ({song["uri"]})')
+        for uri in (uris_old - uris_new):
+            song, i = get_song_with_index(uri, current_queue)
+            if song is None:
+                logger.error(f'uri not found in current_queue: {uri}')
+            elif len(song_history) == 0 or uri != song_history[-1]['uri']:
+                logger.info(f'song removed from queue position {i}: {song["artist"]} - {song["title"]} ({song["uri"]})')
+        current_queue = list(queue)
 
-    req_host = f'http://{os.environ["VRC_VOLUMIO_HOST"]}'
+    # TODO play random song from default_library
+
+
+def remove_uri_from_queue(uri):
+    logger = logging.getLogger('vrc')
+    logger.debug(f'remove_uri_from_queue: {uri}')
+    volumio_host = f'http://{os.environ["VRC_VOLUMIO_HOST"]}'
+
     # https://developers.volumio.com/api/rest-api#music-library
     # https://developers.volumio.com/api/rest-api#adding-items-to-playback
     # find currently playing song in queue
-    song_uri = media['data']['uri']
-    req_get_queue = f'{req_host}/api/v1/getQueue'
+    req_get_queue = f'{volumio_host}/api/v1/getQueue'
     queue = requests.get(req_get_queue).json()['queue']
-    index = None
-    for i, song in enumerate(queue):
-        if song['uri'] == song_uri:
-            index = i
-            break
+    song, index = get_song_with_index(uri, queue)
     if index is not None:
-        logger = logging.getLogger('vrc')
+        # deactivate the volumio notifications to prevent recursion
+        hooks.register_with_volumio(register=False)
+
         logger.debug(f'remove song from queue position {index}: {song["artist"]} - {song["name"]} ({song["uri"]})')
         del queue[index]
 
-    # clear queue
-    req_get_clear_queue = f'{req_host}/api/v1/commands/?cmd=clearQueue'
-    requests.get(req_get_clear_queue)
+        logger.debug('clear queue')
+        req_get_clear_queue = f'{volumio_host}/api/v1/commands/?cmd=clearQueue'
+        requests.get(req_get_clear_queue)
 
-    # populate the queue with the remaining elements
-    req_post_add_to_queue = f'{req_host}/api/v1/addToQueue'
-    requests.post(req_post_add_to_queue, json={"uri": song['uri'] for song in queue})
+        logger.debug(f'populate the queue with the remaining elements: {queue}')
+        req_post_add_to_queue = f'{volumio_host}/api/v1/addToQueue'
+        #for song in queue:
+        #    requests.post(req_post_add_to_queue, json={"uri": song["uri"]})
+        #data = f'{{"url":"{cb_url}"}}'
+        requests.post(req_post_add_to_queue, json=[{"uri": song['uri']} for song in queue])
 
-    # reactivate the volumio notifications
-    hooks.register_with_volumio(unregister=True)
+        # reactivate the volumio notifications
+        hooks.register_with_volumio()
 
 
-class StatusReceiver:
+def get_player_state():
+    logger = logging.getLogger('vrc')
+    volumio_host = f'http://{os.environ["VRC_VOLUMIO_HOST"]}'
+    req_get_state = f'{volumio_host}/api/v1/getState'
+    return requests.get(req_get_state).json()
 
-    @falcon.after(update_queue)
+
+class VolumioStatus:
+
+    @falcon.after(evaluate_status)
     def on_post(self, req, resp):
         # https://falcon.readthedocs.io/en/stable/api/request_and_response_wsgi.html#falcon.Request.get_media
+        # https://developers.volumio.com/api/rest-api
         media = req.get_media()
-        reason = media['item']
-        data = media['data']
         logger = logging.getLogger('vrc')
-        if reason == 'state' and data['status'] == 'play':
-            logger.info(f'now playing: {data["artist"]} - {data["title"]} ({data["uri"]})')
-        elif reason == 'queue':
-            queue = [f'{song["artist"]} - {song["title"]} ({song["uri"]})' for song in data]
-            logger.info(f'queue updated: {queue})')
+        logger.debug(f'/volumiostatus --> on_post: {media}')
+        global status_list
+        status_list.append(media)
         resp.status = falcon.HTTP_200
 
 
 def create_app():
+    dotenv.load_dotenv()
+    util.setup_logger()
+    logger = logging.getLogger('vrc')
+    logger.debug('vrc starting')
+    logger.debug(f'initial player state: {get_player_state()}')
     with open('./queue.json', 'r') as queuefile:
         queue = json.load(queuefile)['queue']
         global default_library
@@ -77,10 +137,8 @@ def create_app():
             "artist": song["artist"],
             "uri": song["uri"],
         } for song in queue]
-    dotenv.load_dotenv()
-    util.setup_logger()
     app = falcon.App()
-    app.add_route('/volumiostatus', StatusReceiver())
+    app.add_route('/volumiostatus', VolumioStatus())
     return app
 
 

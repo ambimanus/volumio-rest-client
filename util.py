@@ -12,22 +12,14 @@ def setup_logger():
     fmt = '[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s'
     # https://docs.python.org/3/library/time.html#time.strftime
     datefmt = '%Y-%m-%d %I:%M:%S %z'
-    logging.basicConfig(level=logging.INFO, format=fmt, datefmt=datefmt)
+    logging.basicConfig(level=logging.DEBUG, format=fmt, datefmt=datefmt)
     logger = logging.getLogger('vrc')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     logfile = os.environ['VRC_LOG_PATH']
 
-    def _rotator(source: str, dest: str):
-        """Compresses the log file at each rotation"""
-        with open(source, 'rb') as log_source, gzip.open(dest, 'wb') as log_out:
-            shutil.copyfileobj(log_source, log_out)
-        os.remove(source)
-
     p_logfile = Path(logfile)
     p_logfile.parent.mkdir(parents=True, exist_ok=True)
-    handler = logging.handlers.RotatingFileHandler(p_logfile, maxBytes=2**20, backupCount=100)
-    handler.rotator = _rotator
-    handler.namer = lambda name: name + '.gz'
+    handler = logging.FileHandler(p_logfile)
     logger.addHandler(handler)
     return logger
