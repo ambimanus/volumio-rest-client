@@ -1,0 +1,64 @@
+{
+  "queue": [
+    {
+      "service": "spop",
+      "type": "song",
+      "name": "I'm an Albatraoz",
+      "title": "I'm an Albatraoz",
+      "artist": "AronChupa",
+      "album": "I'm an Albatraoz",
+      "uri": "spotify:track:5MhsZlmKJG6X5kTHkdwC4B",
+      "samplerate": "160 kbps",
+      "bitdepth": "16 bit",
+      "bitrate": "",
+      "trackType": "spotify",
+      "albumart": "https://i.scdn.co/image/ab67616d0000b2734676cbf99a56d53dc494abfb",
+      "duration": 166
+    },
+    {
+      "service": "spop",
+      "type": "song",
+      "name": "This Night",
+      "title": "This Night",
+      "artist": "Black Lab",
+      "album": "Passion Leaves a Trace",
+      "uri": "spotify:track:39zkdU2RwrLdgitEEOrGcZ",
+      "samplerate": "160 kbps",
+      "bitdepth": "16 bit",
+      "bitrate": "",
+      "trackType": "spotify",
+      "albumart": "https://i.scdn.co/image/ab67616d0000b2736a417f58f25ef183c8f9cb24",
+      "duration": 209
+    },
+    {
+      "service": "spop",
+      "type": "song",
+      "name": "Love Yourself",
+      "title": "Love Yourself",
+      "artist": "Justin Bieber",
+      "album": "Purpose (Deluxe)",
+      "uri": "spotify:track:50kpGaPAhYJ3sGmk6vplg0",
+      "samplerate": "160 kbps",
+      "bitdepth": "16 bit",
+      "bitrate": "",
+      "trackType": "spotify",
+      "albumart": "https://i.scdn.co/image/ab67616d0000b273f46b9d202509a8f7384b90de",
+      "duration": 233
+    },
+    {
+      "service": "spop",
+      "type": "song",
+      "name": "Blurred Lines",
+      "title": "Blurred Lines",
+      "artist": "Robin Thicke",
+      "album": "Blurred Lines",
+      "uri": "spotify:track:5PUvinSo4MNqW7vmomGRS7",
+      "samplerate": "160 kbps",
+      "bitdepth": "16 bit",
+      "bitrate": "",
+      "trackType": "spotify",
+      "albumart": "https://i.scdn.co/image/ab67616d0000b2733d74cd7e75846d10c68afd52",
+      "duration": 263
+    }
+  ]
+}

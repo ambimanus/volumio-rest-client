@@ -1203,21 +1203,6 @@
     {
       "service": "spop",
       "type": "song",
-      "name": "Demons",
-      "title": "Demons",
-      "artist": "Hayley Kiyoko",
-      "album": "I'm Too Sensitive For This Shit",
-      "uri": "spotify:track:0V93bON7wh29gDWYD1AAo5",
-      "samplerate": "160 kbps",
-      "bitdepth": "16 bit",
-      "bitrate": "",
-      "trackType": "spotify",
-      "albumart": "https://i.scdn.co/image/ab67616d0000b273376ec95d58859a5d87d2d9ed",
-      "duration": 179
-    },
-    {
-      "service": "spop",
-      "type": "song",
       "name": "Daydream In Blue",
       "title": "Daydream In Blue",
       "artist": "I Monster",
