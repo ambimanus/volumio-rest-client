@@ -31,8 +31,13 @@ def save_program_state():
 
 def play_random_song():
     logger = logging.getLogger('vrc')
-    if len(default_library) > 0:
+    song = None
+    while len(default_library) > 0 and song is None:
         song = default_library.pop(random.randrange(len(default_library)))
+        if get_song_with_index(song['uri'], song_history) != (None, None)):
+            # Song has already been played, so skip it
+            song = None
+    if song is not None:
         logger.debug(f'play random song: {song}')
         player_replace_and_play(song)
     else:
